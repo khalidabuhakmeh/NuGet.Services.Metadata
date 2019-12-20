@@ -17,6 +17,16 @@ namespace NuGet.Jobs.RegistrationComparer
 {
     public class RegistrationComparerCollectorLogic : ICommitCollectorLogic
     {
+        /// <summary>
+        /// These package IDs suffer the bug where deletion from a non-inlined registration index does not work in the
+        /// old implementation.
+        /// </summary>
+        private static readonly HashSet<string> PackageIdsThatCanFail = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Huitest1000",
+            "NServiceBus",
+        };
+
         private readonly CommitCollectorUtility _utility;
         private readonly HiveComparer _comparer;
         private readonly IOptionsSnapshot<RegistrationComparerConfiguration> _options;
@@ -87,8 +97,16 @@ namespace NuGet.Jobs.RegistrationComparer
                         }
                         catch (Exception ex)
                         {
-                            Interlocked.Increment(ref failures);
-                            _logger.LogError(ex, "The comparison failed.");
+                            if (!PackageIdsThatCanFail.Contains(id))
+                            {
+                                Interlocked.Increment(ref failures);
+                                _logger.LogError(ex, "The comparison failed.");
+                            }
+                            else
+                            {
+                                ResultWriter.WriteWarning(ex.Message.ToString());
+                                _logger.LogWarning(ex, "The comparison failed but the package ID is allowed to fail.");
+                            }
                         }
                     });
                 }

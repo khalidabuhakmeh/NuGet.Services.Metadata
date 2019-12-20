@@ -92,6 +92,7 @@ namespace Ng
         public const string CursorUri = "cursorUri";
         public const string FlatContainerName = "flatContainerName";
         public const string AllIconsInFlatContainer = "allIconsInFlatContainer";
+        public const string AdditionalDependencyCursor = "additionalDependencyCursor";
 
         #endregion
 

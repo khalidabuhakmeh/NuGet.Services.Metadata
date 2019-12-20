@@ -31,6 +31,11 @@ namespace NuGet.Jobs.RegistrationComparer
             return GetDurableCursor(storageFactory, "comparer-cursor.json");
         }
 
+        public static KeyValuePair<string, DurableCursor> GetLockStepCursor(IStorageFactory storageFactory)
+        {
+            return GetDurableCursor(storageFactory, "lock-step-cursor.json");
+        }
+
         private static KeyValuePair<string, DurableCursor> GetDurableCursor(IStorageFactory storageFactory, string name)
         {
             var cursorStorage = storageFactory.Create();

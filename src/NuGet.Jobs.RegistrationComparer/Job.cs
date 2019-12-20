@@ -23,6 +23,7 @@ namespace NuGet.Jobs.RegistrationComparer
     {
         private const string ConfigurationSectionName = "RegistrationComparer";
         private const string RegistrationComparerMode = "compare";
+        private const string LockStepMode = "lock-step";
         private string _mode;
 
         public override void Init(IServiceContainer serviceContainer, IDictionary<string, string> jobArgsDictionary)
@@ -42,6 +43,11 @@ namespace NuGet.Jobs.RegistrationComparer
                     await _serviceProvider
                         .GetRequiredService<RegistrationComparerCommand>()
                         .ExecuteAsync(CancellationToken.None);
+                    break;
+                case LockStepMode:
+                    await _serviceProvider
+                        .GetRequiredService<LockStepCommand>()
+                        .ExecuteAsync();
                     break;
                 default:
                     throw new InvalidOperationException("Unknown mode.");
@@ -87,9 +93,13 @@ namespace NuGet.Jobs.RegistrationComparer
                 case RegistrationComparerMode:
                     services.AddTransient<ICommitCollectorLogic, RegistrationComparerCollectorLogic>();
                     break;
+                case LockStepMode:
+                    services.AddTransient<ICommitCollectorLogic, LockStepCollectorLogic>();
+                    break;
             }
 
             services.AddTransient<RegistrationComparerCommand>();
+            services.AddTransient<LockStepCommand>();
             services.AddTransient<HiveComparer>();
             services.AddTransient<JsonComparer>();
 

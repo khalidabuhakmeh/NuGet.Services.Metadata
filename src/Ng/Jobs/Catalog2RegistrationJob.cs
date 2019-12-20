@@ -65,10 +65,11 @@ namespace Ng.Jobs
                    + $"-{Arguments.SemVer2StorageContainer} <azure-container> "
                    + $"-{Arguments.SemVer2StoragePath} <path>"
                    + Environment.NewLine
-                   + "Optional Arguments"
-                   + $"-{Arguments.StorageOperationMaxExecutionTimeInSeconds} <azureOperationMaxExecutionTimeInSeconds>"
-                   + $"-{Arguments.StorageServerTimeoutInSeconds} <storageServerTimeoutInSeconds>"
-                   + $"-{Arguments.AllIconsInFlatContainer} [true|false]";
+                   + "Optional Arguments: "
+                   + $"-{Arguments.StorageOperationMaxExecutionTimeInSeconds} <azureOperationMaxExecutionTimeInSeconds> "
+                   + $"-{Arguments.StorageServerTimeoutInSeconds} <storageServerTimeoutInSeconds> "
+                   + $"-{Arguments.AllIconsInFlatContainer} [true|false] "
+                   + $"-{Arguments.AdditionalDependencyCursor} <dependency-cursor-url> ";
         }
 
         protected override void Init(IDictionary<string, string> arguments, CancellationToken cancellationToken)
@@ -81,6 +82,7 @@ namespace Ng.Jobs
             var isContentFlatContainer = arguments.GetOrDefault<bool>(Arguments.ContentIsFlatContainer);
             var allIconsInFlatContainer = arguments.GetOrDefault<bool>(Arguments.AllIconsInFlatContainer);
             var maxConcurrentBatches = MaxConcurrentBatches(arguments.GetOrDefault<int>(Arguments.MaxConcurrentBatches));
+            var additionalDependencyCursor = arguments.GetOrDefault<string>(Arguments.AdditionalDependencyCursor);
 
             // The term "legacy" here refers to the registration hives that do not contain any SemVer 2.0.0 packages.
             // In production, this is two registration hives:
@@ -100,11 +102,20 @@ namespace Ng.Jobs
                 RegistrationMakerCatalogItem.PackagePathProvider = new FlatContainerPackagePathProvider(flatContainerName);
                 // In case that the flat container is used as the packages' source the registration needs to wait for the flatcontainer cursor
                 _back = new HttpReadCursor(new Uri(flatContainerCursorUriString));
+                Logger.LogInformation("Depending on flat container cursor: {Url}.", flatContainerCursorUriString);
             }
             else
             {
                 RegistrationMakerCatalogItem.PackagePathProvider = new PackagesFolderPackagePathProvider();
                 _back = MemoryCursor.CreateMax();
+            }
+
+            // Allow another dependency cursor from the command-line. This enables custom scenarios where additional
+            // work (more than just flat container) should be done before proceeding.
+            if (additionalDependencyCursor != null)
+            {
+                _back = new AggregateCursor(new[] { _back, new HttpReadCursor(new Uri(additionalDependencyCursor)) });
+                Logger.LogInformation("Depending on additional cursor: {Url}.", additionalDependencyCursor);
             }
 
             _collector = new RegistrationCollector(

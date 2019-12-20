@@ -24,6 +24,11 @@ namespace NuGet.Jobs.RegistrationComparer
             "devextreme.TypeScript.DefinitelyTyped",
         };
 
+        private readonly static HashSet<string> PackageIdsWithDotlessVersions = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Mvid.Fody",
+        };
+
         private static readonly IReadOnlyList<ValueNormalizer> DefaultScalarNormalizers = new List<ValueNormalizer>
         {
             new ValueNormalizer(
@@ -48,6 +53,22 @@ namespace NuGet.Jobs.RegistrationComparer
                     }
 
                     url = TrySetBaseUrl(url, baseUrl, "{base URL}/");
+                    
+                    // At some point we accepted version strings without dots, since 3.x APIs parse them. But 2.x APIs
+                    // do not! So then we blocked them in the gallery and deleted the packages.
+                    // https://api.nuget.org/v3/catalog0/data/2016.03.11.21.01.35/mvid.fody.2.json
+                    const string pageFragmentPrefix = "/index.json#page/";
+                    if (PackageIdsWithDotlessVersions.Contains(context.PackageId) && url.Contains(pageFragmentPrefix))
+                    {
+                        var fragmentIndex = url.IndexOf(pageFragmentPrefix);
+                        var lowerSlashUpper = url.Substring(fragmentIndex + pageFragmentPrefix.Length);
+                        var pieces = lowerSlashUpper.Split(new[] { '/' }, 2);
+                        return url.Substring(0, fragmentIndex) +
+                            pageFragmentPrefix +
+                            NuGetVersion.Parse(pieces[0]).ToNormalizedString().ToLowerInvariant() +
+                            "/" +
+                            NuGetVersion.Parse(pieces[1]).ToNormalizedString().ToLowerInvariant();
+                    }
 
                     return url;
                 }),
@@ -92,7 +113,7 @@ namespace NuGet.Jobs.RegistrationComparer
                     }
 
                     return commitTimestamp;
-                }), 
+                }),
             new ValueNormalizer(
                 path => IsPropertyName(path, "summary"),
                 (value, isLeft, context) =>
@@ -108,7 +129,7 @@ namespace NuGet.Jobs.RegistrationComparer
                     {
                         return "";
                     }
-                    
+
                     return (string)value;
                 }),
             new ValueNormalizer(
@@ -191,6 +212,17 @@ namespace NuGet.Jobs.RegistrationComparer
                         && value.Type == JTokenType.Array)
                     {
                         return (string)value.OrderBy(x => x).First();
+                    }
+
+                    return (string)value;
+                }),
+            new ValueNormalizer(
+                path => IsPropertyName(path, "lower") || IsPropertyName(path, "upper") || IsPropertyName(path, "version"),
+                (value, isLeft, context) =>
+                {
+                    if (PackageIdsWithDotlessVersions.Contains(context.PackageId))
+                    {
+                        return NuGetVersion.Parse((string)value).ToNormalizedString();
                     }
 
                     return (string)value;
