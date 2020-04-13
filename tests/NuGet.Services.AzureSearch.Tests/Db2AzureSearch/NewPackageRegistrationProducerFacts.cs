@@ -37,8 +37,11 @@ namespace NuGet.Services.AzureSearch.Db2AzureSearch
             private readonly CancellationToken _token;
             private readonly NewPackageRegistrationProducer _target;
             private readonly Mock<IAuxiliaryFileClient> _auxiliaryFileClient;
+            private readonly Mock<IDownloadTransferrer> _downloadTransferrer;
             private readonly DownloadData _downloads;
-            private readonly Dictionary<string, long> _downloadOverrides;
+            private readonly DownloadTransferResult _transferResult;
+            private readonly Dictionary<string, long> _transferChanges;
+            private readonly SortedDictionary<string, SortedSet<string>> _latestPopularityTransfers;
             private HashSet<string> _excludedPackages;
 
             public ProduceWorkAsync(ITestOutputHelper output)
@@ -67,10 +70,16 @@ namespace NuGet.Services.AzureSearch.Db2AzureSearch
                 _auxiliaryFileClient
                     .Setup(x => x.LoadDownloadDataAsync())
                     .ReturnsAsync(() => _downloads);
-                _downloadOverrides = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
-                _auxiliaryFileClient
-                    .Setup(x => x.LoadDownloadOverridesAsync())
-                    .ReturnsAsync(() => _downloadOverrides);
+
+                _downloadTransferrer = new Mock<IDownloadTransferrer>();
+                _transferChanges = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+                _latestPopularityTransfers = new SortedDictionary<string, SortedSet<string>>(StringComparer.OrdinalIgnoreCase);
+                _transferResult = new DownloadTransferResult(
+                    _transferChanges,
+                    _latestPopularityTransfers);
+                _downloadTransferrer
+                    .Setup(x => x.GetTransferChangesAsync(It.IsAny<DownloadData>()))
+                    .ReturnsAsync(_transferResult);
 
                 _entitiesContextFactory
                    .Setup(x => x.CreateAsync(It.IsAny<bool>()))
@@ -91,6 +100,7 @@ namespace NuGet.Services.AzureSearch.Db2AzureSearch
                 _target = new NewPackageRegistrationProducer(
                     _entitiesContextFactory.Object,
                     _auxiliaryFileClient.Object,
+                    _downloadTransferrer.Object,
                     _options.Object,
                     _developmentOptions.Object,
                     _logger);
@@ -386,11 +396,16 @@ namespace NuGet.Services.AzureSearch.Db2AzureSearch
                     },
                     IsVerified = true,
                 });
+                _latestPopularityTransfers["FromPackage"] = new SortedSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "ToPackage"
+                };
 
                 var output = await _target.ProduceWorkAsync(_work, _token);
 
                 Assert.Same(_downloads, output.Downloads);
                 Assert.Same(_excludedPackages, output.ExcludedPackages);
+                Assert.Same(_latestPopularityTransfers, output.PopularityTransfers);
                 Assert.NotNull(output.VerifiedPackages);
                 Assert.Contains("A", output.VerifiedPackages);
                 Assert.NotNull(output.Owners);
@@ -417,7 +432,7 @@ namespace NuGet.Services.AzureSearch.Db2AzureSearch
             }
 
             [Fact]
-            public async Task OverridesDownloadCounts()
+            public async Task AppliesDownloadTransfers()
             {
                 _packageRegistrations.Add(new PackageRegistration
                 {
@@ -458,8 +473,8 @@ namespace NuGet.Services.AzureSearch.Db2AzureSearch
 
                 InitializePackagesFromPackageRegistrations();
 
-                _downloadOverrides["A"] = 55;
-                _downloadOverrides["b"] = 66;
+                _transferChanges["A"] = 55;
+                _transferChanges["b"] = 66;
 
                 var result = await _target.ProduceWorkAsync(_work, _token);
 
@@ -489,79 +504,6 @@ namespace NuGet.Services.AzureSearch.Db2AzureSearch
                 Assert.Equal(4, result.Downloads["B"]["4.0.0"]);
                 Assert.Equal(2, result.Downloads["C"]["5.0.0"]);
                 Assert.Equal(3, result.Downloads["C"]["6.0.0"]);
-            }
-
-            [Fact]
-            public async Task DoesNotOverrideIfDownloadsGreaterOrPackageHasNoDownloads()
-            {
-                _packageRegistrations.Add(new PackageRegistration
-                {
-                    Key = 1,
-                    Id = "A",
-                    Packages = new[]
-                    {
-                        new Package { Version = "1.0.0" },
-                        new Package { Version = "2.0.0" },
-                    },
-                });
-                _downloads.SetDownloadCount("A", "1.0.0", 100);
-                _downloads.SetDownloadCount("A", "2.0.0", 200);
-                _packageRegistrations.Add(new PackageRegistration
-                {
-                    Key = 2,
-                    Id = "B",
-                    Packages = new[]
-                    {
-                        new Package { Version = "3.0.0" },
-                        new Package { Version = "4.0.0" },
-                    },
-                });
-                _downloads.SetDownloadCount("B", "3.0.0", 5);
-                _downloads.SetDownloadCount("B", "4.0.0", 4);
-                _packageRegistrations.Add(new PackageRegistration
-                {
-                    Key = 3,
-                    Id = "C",
-                    Packages = new[]
-                    {
-                        new Package { Version = "5.0.0" },
-                    },
-                });
-                _downloads.SetDownloadCount("C", "5.0.0", 0);
-
-                InitializePackagesFromPackageRegistrations();
-
-                _downloadOverrides["A"] = 55;
-                _downloadOverrides["C"] = 66;
-                _downloadOverrides["D"] = 77;
-
-                var result = await _target.ProduceWorkAsync(_work, _token);
-
-                // Documents should have overriden downloads.
-                var work = _work.Reverse().ToList();
-                Assert.Equal(3, work.Count);
-
-                Assert.Equal("A", work[0].PackageId);
-                Assert.Equal("1.0.0", work[0].Packages[0].Version);
-                Assert.Equal("2.0.0", work[0].Packages[1].Version);
-                Assert.Equal(300, work[0].TotalDownloadCount);
-
-                Assert.Equal("B", work[1].PackageId);
-                Assert.Equal("3.0.0", work[1].Packages[0].Version);
-                Assert.Equal("4.0.0", work[1].Packages[1].Version);
-                Assert.Equal(9, work[1].TotalDownloadCount);
-
-                Assert.Equal("C", work[2].PackageId);
-                Assert.Equal("5.0.0", work[2].Packages[0].Version);
-                Assert.Equal(0, work[2].TotalDownloadCount);
-
-                // Downloads auxiliary file should have original downloads.
-                Assert.Equal(100, result.Downloads["A"]["1.0.0"]);
-                Assert.Equal(200, result.Downloads["A"]["2.0.0"]);
-                Assert.Equal(5, result.Downloads["B"]["3.0.0"]);
-                Assert.Equal(4, result.Downloads["B"]["4.0.0"]);
-                Assert.DoesNotContain("C", result.Downloads.Keys);
-                Assert.DoesNotContain("D", result.Downloads.Keys);
             }
 
             private void InitializePackagesFromPackageRegistrations()
