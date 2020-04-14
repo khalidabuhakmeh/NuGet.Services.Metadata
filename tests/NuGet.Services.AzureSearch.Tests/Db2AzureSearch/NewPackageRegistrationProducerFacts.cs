@@ -473,8 +473,11 @@ namespace NuGet.Services.AzureSearch.Db2AzureSearch
 
                 InitializePackagesFromPackageRegistrations();
 
+                // Transfer changes should be applied to the package registrations.
+                // Transfer changes for packages that do not exist should be ignored.
                 _transferChanges["A"] = 55;
                 _transferChanges["b"] = 66;
+                _transferChanges["C"] = 123;
 
                 var result = await _target.ProduceWorkAsync(_work, _token);
 
@@ -504,6 +507,40 @@ namespace NuGet.Services.AzureSearch.Db2AzureSearch
                 Assert.Equal(4, result.Downloads["B"]["4.0.0"]);
                 Assert.Equal(2, result.Downloads["C"]["5.0.0"]);
                 Assert.Equal(3, result.Downloads["C"]["6.0.0"]);
+            }
+
+            [Fact]
+            public async Task IgnoresDownloadTransfersForNonexistentPackages()
+            {
+                _packageRegistrations.Add(new PackageRegistration
+                {
+                    Key = 1,
+                    Id = "A",
+                    Packages = new[]
+                    {
+                        new Package { Version = "1.0.0" },
+                    },
+                });
+                _downloads.SetDownloadCount("A", "1.0.0", 100);
+
+                InitializePackagesFromPackageRegistrations();
+
+                // Transfer changes should be applied to the package registrations.
+                // Transfer changes for packages that do not exist should be ignored.
+                _transferChanges["PackageDoesNotExist"] = 123;
+
+                var result = await _target.ProduceWorkAsync(_work, _token);
+
+                // Documents should have overriden downloads.
+                var work = _work.ToList();
+                Assert.Single(work);
+
+                Assert.Equal("A", work[0].PackageId);
+                Assert.Equal("1.0.0", work[0].Packages[0].Version);
+                Assert.Equal(100, work[0].TotalDownloadCount);
+
+                // Downloads auxiliary file should have original downloads.
+                Assert.Equal(100, result.Downloads["A"]["1.0.0"]);
             }
 
             private void InitializePackagesFromPackageRegistrations()
