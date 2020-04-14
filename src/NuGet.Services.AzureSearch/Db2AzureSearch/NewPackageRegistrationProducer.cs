@@ -154,7 +154,7 @@ namespace NuGet.Services.AzureSearch.Db2AzureSearch
 
         private Dictionary<string, long> GetPackageToDownloads(
             DownloadData downloads,
-            Dictionary<string, long> downloadChanges)
+            SortedDictionary<string, long> downloadChanges)
         {
             var result = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 

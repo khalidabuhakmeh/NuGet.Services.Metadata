@@ -12,7 +12,7 @@ namespace NuGet.Services.AzureSearch
     public class DownloadTransferResult
     {
         public DownloadTransferResult(
-            Dictionary<string, long> downloadChanges,
+            SortedDictionary<string, long> downloadChanges,
             SortedDictionary<string, SortedSet<string>> popularityTransfers)
         {
             Guard.Assert(
@@ -30,7 +30,7 @@ namespace NuGet.Services.AzureSearch
         /// <summary>
         /// The downloads that should be changed due to popularity transfers.
         /// </summary>
-        public Dictionary<string, long> DownloadChanges { get; }
+        public SortedDictionary<string, long> DownloadChanges { get; }
 
         /// <summary>
         /// The latest popularity transfers data from the gallery database.

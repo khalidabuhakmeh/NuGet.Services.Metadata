@@ -322,7 +322,7 @@ namespace NuGet.Services.AzureSearch.Auxiliary2AzureSearch
                     .Setup(x => x.Compare(It.IsAny<DownloadData>(), It.IsAny<DownloadData>()))
                     .Returns(() => Changes);
 
-                TransferChanges = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+                TransferChanges = new SortedDictionary<string, long>(StringComparer.OrdinalIgnoreCase);
                 LatestPopularityTransfers = new SortedDictionary<string, SortedSet<string>>(StringComparer.OrdinalIgnoreCase);
                 TransferResult = new DownloadTransferResult(
                     TransferChanges,
@@ -413,7 +413,7 @@ namespace NuGet.Services.AzureSearch.Auxiliary2AzureSearch
             public ResultAndAccessCondition<SortedDictionary<string, SortedSet<string>>> OldTransferResult { get; }
             public SortedDictionary<string, long> Changes { get; }
             public DownloadTransferResult TransferResult { get; }
-            public Dictionary<string, long> TransferChanges { get; }
+            public SortedDictionary<string, long> TransferChanges { get; }
             public SortedDictionary<string, SortedSet<string>> LatestPopularityTransfers { get; }
             public UpdateDownloadsCommand Target { get; }
             public IndexActions IndexActions { get; set; }

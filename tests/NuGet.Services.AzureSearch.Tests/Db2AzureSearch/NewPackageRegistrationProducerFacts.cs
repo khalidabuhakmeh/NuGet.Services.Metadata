@@ -40,7 +40,7 @@ namespace NuGet.Services.AzureSearch.Db2AzureSearch
             private readonly Mock<IDownloadTransferrer> _downloadTransferrer;
             private readonly DownloadData _downloads;
             private readonly DownloadTransferResult _transferResult;
-            private readonly Dictionary<string, long> _transferChanges;
+            private readonly SortedDictionary<string, long> _transferChanges;
             private readonly SortedDictionary<string, SortedSet<string>> _latestPopularityTransfers;
             private HashSet<string> _excludedPackages;
 
@@ -72,7 +72,7 @@ namespace NuGet.Services.AzureSearch.Db2AzureSearch
                     .ReturnsAsync(() => _downloads);
 
                 _downloadTransferrer = new Mock<IDownloadTransferrer>();
-                _transferChanges = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+                _transferChanges = new SortedDictionary<string, long>(StringComparer.OrdinalIgnoreCase);
                 _latestPopularityTransfers = new SortedDictionary<string, SortedSet<string>>(StringComparer.OrdinalIgnoreCase);
                 _transferResult = new DownloadTransferResult(
                     _transferChanges,

@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using NuGet.Services.AzureSearch.AuxiliaryFiles;
@@ -29,7 +30,6 @@ namespace NuGet.Services.AzureSearch
         {
             // Downloads are transferred from a "from" package to one or more "to" packages.
             // The "outgoingTransfers" maps "from" packages to their corresponding "to" packages.
-            // The "incomingTransfers" maps "to" packages to their corresponding "from" packages.
             _logger.LogInformation("Fetching new popularity transfer data from gallery database.");
             var outgoingTransfers = await _databaseFetcher.GetPackageIdToPopularityTransfersAsync();
 
@@ -51,6 +51,10 @@ namespace NuGet.Services.AzureSearch
                 oldTransfers.Comparer == StringComparer.OrdinalIgnoreCase,
                 $"Old popularity transfer should have comparer {nameof(StringComparer.OrdinalIgnoreCase)}");
 
+            Guard.Assert(
+                downloadChanges.All(x => downloads.GetDownloadCount(x.Key) == x.Value),
+                "The download changes should match the latest downloads");
+
             // Downloads are transferred from a "from" package to one or more "to" packages.
             // The "outgoingTransfers" maps "from" packages to their corresponding "to" packages.
             _logger.LogInformation("Fetching new popularity transfer data from gallery database.");
@@ -65,7 +69,7 @@ namespace NuGet.Services.AzureSearch
             DownloadData downloads,
             SortedDictionary<string, SortedSet<string>> outgoingTransfers)
         {
-            var result = new Dictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+            var result = new SortedDictionary<string, long>(StringComparer.OrdinalIgnoreCase);
 
             // TODO: Add download changes due to popularity transfers.
             // See: https://github.com/NuGet/NuGetGallery/issues/7898
@@ -78,10 +82,10 @@ namespace NuGet.Services.AzureSearch
 
         private async Task AddDownloadOverridesAsync(
             DownloadData downloads,
-            Dictionary<string, long> downloadChanges)
+            SortedDictionary<string, long> downloadChanges)
         {
             // TODO: Remove download overrides.
-            // See: https://github.com/nuget/engineering/issues/3089
+            // See: https://github.com/NuGet/Engineering/issues/3089
             _logger.LogInformation("Fetching download override data.");
             var downloadOverrides = await _auxiliaryFileClient.LoadDownloadOverridesAsync();
 
