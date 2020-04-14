@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Azure.Search.Models;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using NuGet.Services.AzureSearch.AuxiliaryFiles;
@@ -43,6 +42,9 @@ namespace NuGet.Services.AzureSearch.Auxiliary2AzureSearch
                 BatchPusher.Verify(x => x.PushFullBatchesAsync(), Times.Never);
                 DownloadDataClient.Verify(
                     x => x.ReplaceLatestIndexedAsync(It.IsAny<DownloadData>(), It.IsAny<IAccessCondition>()),
+                    Times.Never);
+                PopularityTransferDataClient.Verify(
+                    x => x.ReplaceLatestIndexedAsync(It.IsAny<SortedDictionary<string, SortedSet<string>>>(), It.IsAny<IAccessCondition>()),
                     Times.Never);
             }
 
@@ -159,7 +161,55 @@ namespace NuGet.Services.AzureSearch.Auxiliary2AzureSearch
             }
 
             [Fact]
-            public async Task AppliesDownloadTransfers()
+            public async Task AppliesTransferChanges()
+            {
+                DownloadSetComparer
+                    .Setup(c => c.Compare(It.IsAny<DownloadData>(), It.IsAny<DownloadData>()))
+                    .Returns<DownloadData, DownloadData>((oldData, newData) =>
+                    {
+                        return new SortedDictionary<string, long>(StringComparer.OrdinalIgnoreCase);
+                    });
+
+                TransferChanges["Package1"] = 100;
+                TransferChanges["Package2"] = 200;
+
+                LatestPopularityTransfers["Package1"] = new SortedSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "Package2"
+                };
+
+                await Target.ExecuteAsync();
+
+                // Documents should be updated.
+                SearchDocumentBuilder
+                    .Verify(
+                        b => b.UpdateDownloadCount("Package1", SearchFilters.IncludePrereleaseAndSemVer2, 100),
+                        Times.Once);
+                SearchDocumentBuilder
+                    .Verify(
+                        b => b.UpdateDownloadCount("Package2", SearchFilters.IncludePrereleaseAndSemVer2, 200),
+                        Times.Once);
+
+                // Downloads auxiliary file should not include transfer changes.
+                DownloadDataClient.Verify(
+                    c => c.ReplaceLatestIndexedAsync(
+                        It.Is<DownloadData>(d => d.Count == 0),
+                        It.IsAny<IAccessCondition>()),
+                    Times.Once);
+
+                // Popularity transfers auxiliary file should have new data.
+                PopularityTransferDataClient.Verify(
+                    c => c.ReplaceLatestIndexedAsync(
+                        It.Is<SortedDictionary<string, SortedSet<string>>>(d =>
+                            d.Count == 1 &&
+                            d["Package1"].Count() == 1 &&
+                            d["Package1"].Contains("Package2")),
+                        It.IsAny<IAccessCondition>()),
+                    Times.Once);
+            }
+
+            [Fact]
+            public async Task TransferChangesOverideDownloadChanges()
             {
                 DownloadSetComparer
                     .Setup(c => c.Compare(It.IsAny<DownloadData>(), It.IsAny<DownloadData>()))
@@ -189,7 +239,7 @@ namespace NuGet.Services.AzureSearch.Auxiliary2AzureSearch
 
                 await Target.ExecuteAsync();
 
-                // Documents should have new data with overriden downloads.
+                // Documents should have new data with transfer changes.
                 SearchDocumentBuilder
                     .Verify(
                         b => b.UpdateDownloadCount("A", SearchFilters.IncludePrereleaseAndSemVer2, 55),
@@ -203,7 +253,7 @@ namespace NuGet.Services.AzureSearch.Auxiliary2AzureSearch
                         b => b.UpdateDownloadCount("C", SearchFilters.IncludePrereleaseAndSemVer2, 5),
                         Times.Once);
 
-                // Downloads auxiliary file should have new data without overriden downloads.
+                // Downloads auxiliary file should not reflect transfer changes.
                 DownloadDataClient.Verify(
                     c => c.ReplaceLatestIndexedAsync(
                         It.Is<DownloadData>(d =>
@@ -221,6 +271,7 @@ namespace NuGet.Services.AzureSearch.Auxiliary2AzureSearch
                         It.IsAny<IAccessCondition>()),
                     Times.Once);
 
+                // Popularity transfers auxiliary file should have new data.
                 PopularityTransferDataClient.Verify(
                     c => c.ReplaceLatestIndexedAsync(
                         It.Is<SortedDictionary<string, SortedSet<string>>>(d =>
