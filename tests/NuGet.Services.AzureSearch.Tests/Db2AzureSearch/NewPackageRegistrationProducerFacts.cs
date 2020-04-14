@@ -281,6 +281,49 @@ namespace NuGet.Services.AzureSearch.Db2AzureSearch
             }
 
             [Fact]
+            public async Task DefaultsPackageDownloads()
+            {
+                _packageRegistrations.Add(new PackageRegistration
+                {
+                    Key = 1,
+                    Id = "HasDownloads",
+                    Packages = new[]
+                    {
+                        new Package { Version = "1.0.0" },
+                    },
+                });
+                _downloads.SetDownloadCount("HasDownloads", "1.0.0", 100);
+                _packageRegistrations.Add(new PackageRegistration
+                {
+                    Key = 2,
+                    Id = "NoDownloads",
+                    Packages = new[]
+                    {
+                        new Package { Version = "1.0.0" },
+                    },
+                });
+
+                InitializePackagesFromPackageRegistrations();
+
+                var result = await _target.ProduceWorkAsync(_work, _token);
+
+                // Documents should have overriden downloads.
+                var work = _work.Reverse().ToList();
+                Assert.Equal(2, work.Count);
+
+                Assert.Equal("HasDownloads", work[0].PackageId);
+                Assert.Equal("1.0.0", work[0].Packages[0].Version);
+                Assert.Equal(100, work[0].TotalDownloadCount);
+                Assert.Equal("NoDownloads", work[1].PackageId);
+                Assert.Equal("1.0.0", work[1].Packages[0].Version);
+                Assert.Equal(0, work[1].TotalDownloadCount);
+
+                // Downloads auxiliary file should have original downloads.
+                Assert.Equal(100, result.Downloads["HasDownloads"]["1.0.0"]);
+                Assert.False(result.Downloads.ContainsKey("NoDownloads"));
+            }
+
+            [Fact]
             public async Task RetrievesAndUsesExclusionList()
             {
                 _packageRegistrations.Add(new PackageRegistration
