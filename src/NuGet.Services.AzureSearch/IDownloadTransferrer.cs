@@ -8,21 +8,21 @@ using NuGet.Services.AzureSearch.AuxiliaryFiles;
 namespace NuGet.Services.AzureSearch
 {
     /// <summary>
-    /// Applies popularity transfer changes to download data.
+    /// Determines the downloads that should be changed due to popularity transfers.
     /// </summary>
     public interface IDownloadTransferrer
     {
         /// <summary>
-        /// Apply popularity transfer changes to the initial downloads data.
+        /// Determine changes that should be applied to the initial downloads data due to popularity transfers.
         /// </summary>
         /// <param name="downloads">The initial downloads data.</param>
-        /// <returns>The result of applying popularity transfers.</returns>
+        /// <returns>The changes that should be applied to the initial downloads data.</returns>
         Task<DownloadTransferResult> GetTransferChangesAsync(DownloadData downloads);
 
         /// <summary>
-        /// Apply popularity transfer changes to the updated downloads data.
+        /// Determine changes that should be applied to the latest downloads data due to popularity transfers.
         /// </summary>
-        /// <param name="downloads">The updated downloads data.</param>
+        /// <param name="downloads">The latest downloads data.</param>
         /// <param name="downloadChanges">The downloads that have changed since the last index.</param>
         /// <param name="oldTransfers">The popularity transfers that were previously indexed.</param>
         /// <returns>The result of applying popularity transfers.</returns>
