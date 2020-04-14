@@ -7,7 +7,7 @@ using System.Collections.Generic;
 namespace NuGet.Services.AzureSearch
 {
     /// <summary>
-    /// The result of applying popularity transfers to download data.
+    /// The popularity transfer changes that should be applied to the download data.
     /// </summary>
     public class DownloadTransferResult
     {
@@ -28,7 +28,7 @@ namespace NuGet.Services.AzureSearch
         }
 
         /// <summary>
-        /// The downloads that were changed by transferring downloads.
+        /// The downloads that should be changed due to popularity transfers.
         /// </summary>
         public Dictionary<string, long> DownloadChanges { get; }
 
