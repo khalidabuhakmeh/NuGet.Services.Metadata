@@ -517,7 +517,6 @@ namespace NuGet.Services.AzureSearch.Db2AzureSearch
                 InitializePackagesFromPackageRegistrations();
 
                 // Transfer changes should be applied to the package registrations.
-                // Transfer changes for packages that do not exist should be ignored.
                 _transferChanges["A"] = 55;
                 _transferChanges["b"] = 66;
                 _transferChanges["C"] = 123;
@@ -541,7 +540,7 @@ namespace NuGet.Services.AzureSearch.Db2AzureSearch
                 Assert.Equal("C", work[2].PackageId);
                 Assert.Equal("5.0.0", work[2].Packages[0].Version);
                 Assert.Equal("6.0.0", work[2].Packages[1].Version);
-                Assert.Equal(5, work[2].TotalDownloadCount);
+                Assert.Equal(123, work[2].TotalDownloadCount);
 
                 // Downloads auxiliary file should have original downloads.
                 Assert.Equal(12, result.Downloads["A"]["1.0.0"]);
