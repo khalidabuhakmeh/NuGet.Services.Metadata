@@ -328,7 +328,7 @@ namespace NuGet.Services.AzureSearch.Auxiliary2AzureSearch
                     TransferChanges,
                     LatestPopularityTransfers);
                 DownloadTransferrer
-                    .Setup(x => x.GetTransferChangesAsync(
+                    .Setup(x => x.GetUpdatedTransferChangesAsync(
                         It.IsAny<DownloadData>(),
                         It.IsAny<SortedDictionary<string, long>>(),
                         It.IsAny<SortedDictionary<string, SortedSet<string>>>()))

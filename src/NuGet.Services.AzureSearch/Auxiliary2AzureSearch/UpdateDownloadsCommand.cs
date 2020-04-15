@@ -162,7 +162,7 @@ namespace NuGet.Services.AzureSearch.Auxiliary2AzureSearch
             SortedDictionary<string, SortedSet<string>> oldTransfers)
         {
             _logger.LogInformation("Finding download changes from popularity transfers and download overrides.");
-            var transferResult = await _downloadTransferrer.GetTransferChangesAsync(newData, downloadChanges, oldTransfers);
+            var transferResult = await _downloadTransferrer.GetUpdatedTransferChangesAsync(newData, downloadChanges, oldTransfers);
             _logger.LogInformation(
                 "{Count} package IDs have download count changes from popularity transfers and download overrides.",
                 transferResult.DownloadChanges.Count);

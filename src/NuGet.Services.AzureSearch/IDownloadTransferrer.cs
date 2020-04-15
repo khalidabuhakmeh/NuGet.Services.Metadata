@@ -26,7 +26,7 @@ namespace NuGet.Services.AzureSearch
         /// <param name="downloadChanges">The downloads that have changed since the last index.</param>
         /// <param name="oldTransfers">The popularity transfers that were previously indexed.</param>
         /// <returns>The result of applying popularity transfers.</returns>
-        Task<DownloadTransferResult> GetTransferChangesAsync(
+        Task<DownloadTransferResult> GetUpdatedTransferChangesAsync(
             DownloadData downloads,
             SortedDictionary<string, long> downloadChanges,
             SortedDictionary<string, SortedSet<string>> oldTransfers);

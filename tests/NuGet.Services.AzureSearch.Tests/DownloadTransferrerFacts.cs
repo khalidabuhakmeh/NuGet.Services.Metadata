@@ -13,7 +13,7 @@ namespace NuGet.Services.AzureSearch
 {
     public class DownloadTransferrerFacts
     {
-        public class GetInitialTransferChanges : Facts
+        public class GetTransferChanges : Facts
         {
             [Fact]
             public async Task ReturnsEmptyResult()
@@ -77,7 +77,7 @@ namespace NuGet.Services.AzureSearch
                 DownloadChanges["A"] = 1;
 
                 var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-                    () => Target.GetTransferChangesAsync(DownloadData, DownloadChanges, OldTransfers));
+                    () => Target.GetUpdatedTransferChangesAsync(DownloadData, DownloadChanges, OldTransfers));
 
                 Assert.Equal("The download changes should match the latest downloads", ex.Message);
             }
@@ -89,7 +89,7 @@ namespace NuGet.Services.AzureSearch
                 DownloadChanges["A"] = 2;
 
                 var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-                    () => Target.GetTransferChangesAsync(DownloadData, DownloadChanges, OldTransfers));
+                    () => Target.GetUpdatedTransferChangesAsync(DownloadData, DownloadChanges, OldTransfers));
 
                 Assert.Equal("The download changes should match the latest downloads", ex.Message);
             }
@@ -97,7 +97,7 @@ namespace NuGet.Services.AzureSearch
             [Fact]
             public async Task ReturnsEmptyResult()
             {
-                var result = await Target.GetTransferChangesAsync(DownloadData, DownloadChanges, OldTransfers);
+                var result = await Target.GetUpdatedTransferChangesAsync(DownloadData, DownloadChanges, OldTransfers);
 
                 Assert.Empty(result.DownloadChanges);
                 Assert.Empty(result.LatestPopularityTransfers);
@@ -110,7 +110,7 @@ namespace NuGet.Services.AzureSearch
                 AddPopularityTransfer("A", "C");
                 AddPopularityTransfer("Z", "B");
 
-                var result = await Target.GetTransferChangesAsync(DownloadData, DownloadChanges, OldTransfers);
+                var result = await Target.GetUpdatedTransferChangesAsync(DownloadData, DownloadChanges, OldTransfers);
 
                 Assert.Equal(2, result.LatestPopularityTransfers.Count);
                 Assert.Equal(new[] { "A", "Z" }, result.LatestPopularityTransfers.Keys);
@@ -132,7 +132,7 @@ namespace NuGet.Services.AzureSearch
                 DownloadOverrides["A"] = 1000;
                 DownloadOverrides["C"] = 3000;
 
-                var result = await Target.GetTransferChangesAsync(DownloadData, DownloadChanges, OldTransfers);
+                var result = await Target.GetUpdatedTransferChangesAsync(DownloadData, DownloadChanges, OldTransfers);
 
                 Assert.Equal(2, result.DownloadChanges.Count);
                 Assert.Equal(new[] { "A", "C" }, result.DownloadChanges.Keys);
@@ -153,7 +153,7 @@ namespace NuGet.Services.AzureSearch
                 DownloadOverrides["B"] = 1000;
                 DownloadOverrides["B"] = 1;
 
-                var result = await Target.GetTransferChangesAsync(DownloadData, DownloadChanges, OldTransfers);
+                var result = await Target.GetUpdatedTransferChangesAsync(DownloadData, DownloadChanges, OldTransfers);
 
                 Assert.Empty(result.DownloadChanges);
             }

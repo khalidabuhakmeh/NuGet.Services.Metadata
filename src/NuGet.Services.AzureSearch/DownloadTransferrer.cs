@@ -38,7 +38,7 @@ namespace NuGet.Services.AzureSearch
                 outgoingTransfers);
         }
 
-        public async Task<DownloadTransferResult> GetTransferChangesAsync(
+        public async Task<DownloadTransferResult> GetUpdatedTransferChangesAsync(
             DownloadData downloads,
             SortedDictionary<string, long> downloadChanges,
             SortedDictionary<string, SortedSet<string>> oldTransfers)
