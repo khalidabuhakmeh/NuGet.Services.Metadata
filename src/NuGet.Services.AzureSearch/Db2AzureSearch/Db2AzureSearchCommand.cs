@@ -203,8 +203,11 @@ namespace NuGet.Services.AzureSearch.Db2AzureSearch
 
         private async Task WritePopularityTransfersDataAsync(SortedDictionary<string, SortedSet<string>> popularityTransfers)
         {
-            // TODO: Write popularity transfers data file.
-            // See: https://github.com/NuGet/NuGetGallery/issues/7898
+            _logger.LogInformation("Writing the initial popularity transfers data file.");
+            await _popularityTransferDataClient.ReplaceLatestIndexedAsync(
+                popularityTransfers,
+                AccessConditionWrapper.GenerateIfNotExistsCondition());
+            _logger.LogInformation("Done uploading the initial popularity transfers data file.");
         }
 
         private async Task<InitialAuxiliaryData> ProduceWorkAsync(

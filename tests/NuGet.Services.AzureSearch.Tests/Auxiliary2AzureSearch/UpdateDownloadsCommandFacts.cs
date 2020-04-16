@@ -201,8 +201,15 @@ namespace NuGet.Services.AzureSearch.Auxiliary2AzureSearch
                         It.IsAny<IAccessCondition>()),
                     Times.Once);
 
-                // TODO: Popularity transfers auxiliary file should have new data.
-                // See: https://github.com/NuGet/NuGetGallery/issues/7898
+                // Popularity transfers auxiliary file should have new data.
+                PopularityTransferDataClient.Verify(
+                    c => c.ReplaceLatestIndexedAsync(
+                        It.Is<SortedDictionary<string, SortedSet<string>>>(d =>
+                            d.Count == 1 &&
+                            d["Package1"].Count == 1 &&
+                            d["Package1"].Contains("Package2")),
+                        It.IsAny<IAccessCondition>()),
+                    Times.Once);
             }
 
             [Fact]
@@ -268,8 +275,15 @@ namespace NuGet.Services.AzureSearch.Auxiliary2AzureSearch
                         It.IsAny<IAccessCondition>()),
                     Times.Once);
 
-                // TODO: Popularity transfers auxiliary file should have new data.
-                // See: https://github.com/NuGet/NuGetGallery/issues/7898
+                // Popularity transfers auxiliary file should have new data.
+                PopularityTransferDataClient.Verify(
+                    c => c.ReplaceLatestIndexedAsync(
+                        It.Is<SortedDictionary<string, SortedSet<string>>>(d =>
+                            d.Count == 1 &&
+                            d["FromPackage"].Count == 1 &&
+                            d["FromPackage"].Contains("ToPackage")),
+                        It.IsAny<IAccessCondition>()),
+                    Times.Once);
             }
         }
 
