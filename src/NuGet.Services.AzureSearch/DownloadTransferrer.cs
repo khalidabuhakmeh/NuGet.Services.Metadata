@@ -205,9 +205,6 @@ namespace NuGet.Services.AzureSearch
             SortedDictionary<string, SortedSet<string>> incomingTransfers,
             DownloadData downloads)
         {
-            // TODO: Add a test for a popularity transfer where one of packages has both incoming and outgoing
-            // transfers. The outgoing transfer should be split equally between all packages even though one of the
-            // recipients declines the transfer!
             var originalDownloads = downloads.GetDownloadCount(packageId);
             var transferPercentage = _options.Value.Scoring.PopularityTransfer;
 

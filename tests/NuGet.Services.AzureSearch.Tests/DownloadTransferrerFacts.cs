@@ -139,6 +139,7 @@ namespace NuGet.Services.AzureSearch
                 DownloadData.SetDownloadCount("C", "1.0.0", 0);
 
                 AddPopularityTransfer("A", "B");
+                AddPopularityTransfer("A", "C");
                 AddPopularityTransfer("B", "C");
 
                 var result = await Target.GetTransferChangesAsync(DownloadData);
@@ -147,7 +148,7 @@ namespace NuGet.Services.AzureSearch
                 Assert.Equal(new[] { "A", "B", "C" }, result.DownloadChanges.Keys);
                 Assert.Equal(0, result.DownloadChanges["A"]);
                 Assert.Equal(0, result.DownloadChanges["B"]);
-                Assert.Equal(0, result.DownloadChanges["C"]);
+                Assert.Equal(50, result.DownloadChanges["C"]);
             }
 
             [Fact]
@@ -565,6 +566,106 @@ namespace NuGet.Services.AzureSearch
                 Assert.Equal(5, result.DownloadChanges["B"]);
                 Assert.Equal(0, result.DownloadChanges["C"]);
                 Assert.Empty(result.LatestPopularityTransfers);
+            }
+
+            [Fact]
+            public async Task SupportsZeroPopularityTransfer()
+            {
+                PopularityTransfer = 0;
+
+                DownloadData.SetDownloadCount("A", "1.0.0", 100);
+                DownloadData.SetDownloadCount("B", "1.0.0", 5);
+
+                DownloadChanges["A"] = 100;
+
+                AddPopularityTransfer("A", "B");
+
+                var result = await Target.GetUpdatedTransferChangesAsync(
+                    DownloadData,
+                    DownloadChanges,
+                    OldTransfers);
+
+                Assert.Equal(new[] { "A", "B" }, result.DownloadChanges.Keys);
+                Assert.Equal(100, result.DownloadChanges["A"]);
+                Assert.Equal(5, result.DownloadChanges["B"]);
+            }
+
+            [Fact]
+            public async Task PackageWithOutgoingTransferRejectsIncomingTransfer()
+            {
+                PopularityTransfer = 1;
+
+                DownloadData.SetDownloadCount("A", "1.0.0", 100);
+                DownloadData.SetDownloadCount("B", "1.0.0", 0);
+                DownloadData.SetDownloadCount("C", "1.0.0", 0);
+
+                DownloadChanges["A"] = 100;
+
+                AddPopularityTransfer("A", "B");
+                AddPopularityTransfer("A", "C");
+                AddPopularityTransfer("B", "C");
+
+                var result = await Target.GetUpdatedTransferChangesAsync(
+                    DownloadData,
+                    DownloadChanges,
+                    OldTransfers);
+
+                // B has incoming and outgoing popularity transfers. It should reject the incoming transfer.
+                Assert.Equal(new[] { "A", "B", "C" }, result.DownloadChanges.Keys);
+                Assert.Equal(0, result.DownloadChanges["A"]);
+                Assert.Equal(0, result.DownloadChanges["B"]);
+                Assert.Equal(50, result.DownloadChanges["C"]);
+            }
+
+            [Fact]
+            public async Task PopularityTransfersAreNotTransitive()
+            {
+                PopularityTransfer = 1;
+
+                DownloadData.SetDownloadCount("A", "1.0.0", 100);
+                DownloadData.SetDownloadCount("B", "1.0.0", 100);
+                DownloadData.SetDownloadCount("C", "1.0.0", 100);
+
+                DownloadChanges["A"] = 100;
+
+                AddPopularityTransfer("A", "B");
+                AddPopularityTransfer("B", "C");
+
+                var result = await Target.GetUpdatedTransferChangesAsync(
+                    DownloadData,
+                    DownloadChanges,
+                    OldTransfers);
+
+                // A transfers downloads to B.
+                // B transfers downloads to C.
+                // B and C should reject downloads from A.
+                Assert.Equal(new[] { "A", "B" }, result.DownloadChanges.Keys);
+                Assert.Equal(0, result.DownloadChanges["A"]);
+                Assert.Equal(0, result.DownloadChanges["B"]);
+            }
+
+            [Fact]
+            public async Task RejectsCyclicalPopularityTransfers()
+            {
+                PopularityTransfer = 1;
+
+                DownloadData.SetDownloadCount("A", "1.0.0", 100);
+                DownloadData.SetDownloadCount("B", "1.0.0", 100);
+
+                DownloadChanges["A"] = 100;
+                DownloadChanges["B"] = 100;
+
+                AddPopularityTransfer("A", "B");
+                AddPopularityTransfer("B", "A");
+
+                var result = await Target.GetUpdatedTransferChangesAsync(
+                    DownloadData,
+                    DownloadChanges,
+                    OldTransfers);
+
+                Assert.Equal(new[] { "A", "B" }, result.DownloadChanges.Keys);
+                Assert.Equal(0, result.DownloadChanges["A"]);
+                Assert.Equal(0, result.DownloadChanges["B"]);
             }
 
             [Fact]
